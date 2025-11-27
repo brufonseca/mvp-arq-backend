@@ -15,7 +15,7 @@ from schemas.diario import (
     retorna_diario, retorna_lista_diarios
 )
 
-from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema)
+from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema, retorna_lista_receitas)
 
 from schemas.error import ErrorSchema
 from flask_cors import CORS
@@ -233,16 +233,16 @@ def edit_entrada_diario(body:DiarioSchema):
             "Erro ao adicionar registro para a data %s, %s", diario.data_registro, {e})
         return {"message": error_msg}, 400
 
-@app.post('/buscar_receita', tags=[receita_tag],
+@app.get('/buscar_receita', tags=[receita_tag],
  responses={"200": ReceitaViewSchema,  "400": ErrorSchema})
 def buscar_receita(query: ReceitaBuscaSchema):
         try:
-            dados = request.get_json()
 
-            ingredientes = dados.get("ingredientes")
-            max_results = dados.get("maxResults", 3)
+            ingredients = query.ingredients
+            excludeIngredients = query.excludeIngredients
+            max_results = 1
 
-            if not ingredientes:
+            if not ingredients:
                 error_msg = "Lista de ingredientes não enviada"
                 logger.warning(
                 "Erro ao buscar receitas", error_msg)
@@ -252,24 +252,36 @@ def buscar_receita(query: ReceitaBuscaSchema):
 
             params = {
                 "apiKey": "0f0ef747b6754511b84b68db4d23b893",
-                "includeIngredients": ingredientes_query,
-               
+                "includeIngredients": ingredients,
+                "excludeIngredients": excludeIngredients,
                 "number": max_results,
                 "addRecipeInformation": True,  # traz mais dados da receita
                 "fillIngredients": True,
                 "addRecipeInstructions": True,
             }
-
+            
+            
+            logger.debug("Requisitando receitas")
             resposta = requests.get(url, params=params)
-            resposta.raise_for_status()
 
-            resultados = resposta.json()
+            if resposta.status_code == 200:
 
-            logger.warning(resultados)
-        except requests.exceptions.RequestException as e:
-            return jsonify({"erro_api": str(e)}), 502
+                dados = resposta.json()
+                receitas = dados.get("results")
 
+                return retorna_lista_receitas(receitas), 200
+            else:
+                error_msg = "Não foi realizar a requisição :/"
+                logger.warning(
+                    "Erro ao realizar a requisição",{e})
+                return {"message": error_msg}, 400
         except Exception as e:
-            return jsonify({"erro": str(e)}), 500
+            # tratando erros nao previstos
+            error_msg = "Não foi realizar a requisição :/"
+            logger.warning(
+                        "Erro ao realizar a requisição",{e})
+            return {"message": error_msg}, 400
+
+
 
             
