@@ -1,3 +1,4 @@
+import os
 import json
 import requests
 
@@ -20,9 +21,22 @@ from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema, retorna_list
 from schemas.error import ErrorSchema
 from flask_cors import CORS
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 info = Info(title="Diário Introdução Alimentar API", version="1.0.0")
 app = OpenAPI(__name__, info=info)
 CORS(app)
+
+
+#definindo api keys
+
+SPOONACULAR_API_KEY = os.getenv('SPOONACULAR_API_KEY')
+
+if not SPOONACULAR_API_KEY:
+    raise RuntimeError("SPOONACULAR_API_KEY não encontrada nas variáveis de ambiente")
 
 # definindo tags
 home_tag = Tag(name="Documentação",
@@ -251,7 +265,7 @@ def buscar_receita(query: ReceitaBuscaSchema):
             url = "https://api.spoonacular.com/recipes/complexSearch"
 
             params = {
-                "apiKey": "0f0ef747b6754511b84b68db4d23b893",
+                "apiKey": SPOONACULAR_API_KEY,
                 "includeIngredients": ingredients,
                 "excludeIngredients": excludeIngredients,
                 "number": max_results,
