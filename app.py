@@ -1,8 +1,10 @@
 import json
+import requests
 
 from sqlite3 import IntegrityError
 from flask_openapi3 import OpenAPI, Info, Tag
 from flask import redirect, request
+
 
 from model import Session, Diario, Refeicao
 from logger import logger
@@ -12,6 +14,8 @@ from schemas.diario import (
     DiarioRemocaoSchema, DiarioBuscaSchema,
     retorna_diario, retorna_lista_diarios
 )
+
+from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema)
 
 from schemas.error import ErrorSchema
 from flask_cors import CORS
@@ -26,6 +30,7 @@ home_tag = Tag(name="Documentação",
 diario_tag = Tag(
     name="Diário", description="Adição, visualização e remoção de registros do diário de introdução alimentar")
 
+receita_tag = Tag(name="Receitas", description="Busca de receitas usando a API Spoonacular")
 
 @app.get('/', tags=[home_tag])
 def home():
@@ -227,3 +232,44 @@ def edit_entrada_diario(body:DiarioSchema):
         logger.warning(
             "Erro ao adicionar registro para a data %s, %s", diario.data_registro, {e})
         return {"message": error_msg}, 400
+
+@app.post('/buscar_receita', tags=[receita_tag],
+ responses={"200": ReceitaViewSchema,  "400": ErrorSchema})
+def buscar_receita(query: ReceitaBuscaSchema):
+        try:
+            dados = request.get_json()
+
+            ingredientes = dados.get("ingredientes")
+            max_results = dados.get("maxResults", 3)
+
+            if not ingredientes:
+                error_msg = "Lista de ingredientes não enviada"
+                logger.warning(
+                "Erro ao buscar receitas", error_msg)
+                return {"message": error_msg}, 404
+            
+            url = "https://api.spoonacular.com/recipes/complexSearch"
+
+            params = {
+                "apiKey": "0f0ef747b6754511b84b68db4d23b893",
+                "includeIngredients": ingredientes_query,
+               
+                "number": max_results,
+                "addRecipeInformation": True,  # traz mais dados da receita
+                "fillIngredients": True,
+                "addRecipeInstructions": True,
+            }
+
+            resposta = requests.get(url, params=params)
+            resposta.raise_for_status()
+
+            resultados = resposta.json()
+
+            logger.warning(resultados)
+        except requests.exceptions.RequestException as e:
+            return jsonify({"erro_api": str(e)}), 502
+
+        except Exception as e:
+            return jsonify({"erro": str(e)}), 500
+
+            
