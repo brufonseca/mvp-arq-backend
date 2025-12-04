@@ -12,8 +12,7 @@ class ReceitaViewSchema(BaseModel):
     """ 
     Define como uma receita será retornada
     """
-    # receitas: List[str]
-    receita: str
+    receita: Dict[str, Any]
 
 def retorna_lista_receitas(receitas: List[Dict[str, Any]]):
     list_receitas = []
@@ -49,3 +48,17 @@ def retorna_lista_receitas(receitas: List[Dict[str, Any]]):
         list_receitas.append(nova_receita)
 
     return list_receitas
+
+def organiza_estrutura_receita(texto_receita:str):
+
+    titulo, instrucoes, texto_ingredientes = texto_receita.split("&&&")
+    ingredientes = texto_ingredientes.split("$$$")
+
+    receita = {
+        "titulo": titulo,
+        "instrucoes": instrucoes,
+        "ingredientes": ingredientes
+    }
+
+    return receita
+

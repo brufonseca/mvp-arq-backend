@@ -16,7 +16,7 @@ from schemas.diario import (
     retorna_diario, retorna_lista_diarios
 )
 
-from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema, retorna_lista_receitas)
+from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema, retorna_lista_receitas, organiza_estrutura_receita)
 
 from schemas.traducao import (TraducaoRequisicaoSchema, TraducaoViewSchema)
 
@@ -297,19 +297,20 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 instrucoes = receita.get("instrucoes")
                 ingredientes = receita.get("ingredientes")
 
-                print(ingredientes)
-
                 texto_ingredientes = ""
 
                 for ingrediente in ingredientes:
                     texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "$$$"
 
 
-                print(texto_ingredientes)
-                
                 texto_a_traduzir = titulo + "&&&"+instrucoes+ "&&&"+texto_ingredientes
 
-                return realizar_traducao(texto_a_traduzir, "en", "pt-BR")
+                texto_traduzido, status_code = realizar_traducao(texto_a_traduzir, "en", "pt-BR")
+
+                if(status_code == 200):
+                    texto_traduzido = organiza_estrutura_receita(texto_traduzido)
+
+                return texto_traduzido, status_code
 
                 # //return retorna_lista_receitas(receitas), 200
             else:
