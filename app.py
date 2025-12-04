@@ -18,6 +18,8 @@ from schemas.diario import (
 
 from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema, retorna_lista_receitas)
 
+from schemas.traducao import (TraducaoRequisicaoSchema, TraducaoViewSchema)
+
 from schemas.error import ErrorSchema
 from flask_cors import CORS
 
@@ -34,6 +36,7 @@ CORS(app)
 #definindo api keys
 
 SPOONACULAR_API_KEY = os.getenv('SPOONACULAR_API_KEY')
+GOOGLE_TRANSLATE_API_KEY = os.getenv('GOOGLE_TRANSLATE_API_KEY')
 
 if not SPOONACULAR_API_KEY:
     raise RuntimeError("SPOONACULAR_API_KEY não encontrada nas variáveis de ambiente")
@@ -45,6 +48,8 @@ diario_tag = Tag(
     name="Diário", description="Adição, visualização e remoção de registros do diário de introdução alimentar")
 
 receita_tag = Tag(name="Receitas", description="Busca de receitas usando a API Spoonacular")
+
+traducao_tag = Tag(name="Tradução", description="Tradução de textos usando a API Google Translate")
 
 @app.get('/', tags=[home_tag])
 def home():
@@ -252,12 +257,15 @@ def edit_entrada_diario(body:DiarioSchema):
 def buscar_receita(query: ReceitaBuscaSchema):
         try:
 
-            ingredients = query.ingredients
-            excludeIngredients = query.excludeIngredients
+            ingredientes = query.ingredients
+            excluir_ingredientes = query.excludeIngredients
             max_results = 1
 
-            if not ingredients:
-                error_msg = "Lista de ingredientes não enviada"
+            ingredientes_traduzidos,ing_status_code = realizar_traducao(ingredientes, "pt-BR", "en")
+            excluir_ingredientes_traduzidos,exc_ing_status_code  = realizar_traducao(excluir_ingredientes, "pt-BR", "en")
+
+            if ing_status_code == 400 or exc_ing_status_code == 400 :
+                error_msg = "Não foi possível traduzir os ingredientes"
                 logger.warning(
                 "Erro ao buscar receitas", error_msg)
                 return {"message": error_msg}, 404
@@ -266,10 +274,10 @@ def buscar_receita(query: ReceitaBuscaSchema):
 
             params = {
                 "apiKey": SPOONACULAR_API_KEY,
-                "includeIngredients": ingredients,
-                "excludeIngredients": excludeIngredients,
+                "includeIngredients": ingredientes_traduzidos,
+                "excludeIngredients": excluir_ingredientes_traduzidos,
                 "number": max_results,
-                "addRecipeInformation": True,  # traz mais dados da receita
+                "addRecipeInformation": True,  
                 "fillIngredients": True,
                 "addRecipeInstructions": True,
             }
@@ -283,19 +291,106 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 dados = resposta.json()
                 receitas = dados.get("results")
 
-                return retorna_lista_receitas(receitas), 200
+                receita = retorna_lista_receitas(receitas)[0]
+
+                titulo = receita.get("titulo")
+                instrucoes = receita.get("instrucoes")
+                ingredientes = receita.get("ingredientes")
+
+                print(ingredientes)
+
+                texto_ingredientes = ""
+
+                for ingrediente in ingredientes:
+                    texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "$$$"
+
+
+                print(texto_ingredientes)
+                
+                texto_a_traduzir = titulo + "&&&"+instrucoes+ "&&&"+texto_ingredientes
+
+                return realizar_traducao(texto_a_traduzir, "en", "pt-BR")
+
+                # //return retorna_lista_receitas(receitas), 200
             else:
-                error_msg = "Não foi realizar a requisição :/"
+                error_msg = "Não foi possível realizar a requisição :/"
                 logger.warning(
                     "Erro ao realizar a requisição",{e})
                 return {"message": error_msg}, 400
         except Exception as e:
             # tratando erros nao previstos
-            error_msg = "Não foi realizar a requisição :/"
+            error_msg = "Não foi possível realizar a requisição :/"
             logger.warning(
                         "Erro ao realizar a requisição",{e})
             return {"message": error_msg}, 400
 
 
+@app.get('/traduzir_texto', tags=[traducao_tag],
+ responses={"200": TraducaoViewSchema,  "400": ErrorSchema})
+def traduzir_texto(query: TraducaoRequisicaoSchema):
+    try:
 
-            
+        texto = query.texto
+        idioma_origem = query.idioma_origem
+        idioma_destino = query.idioma_destino
+
+        traducao, status_code = realizar_traducao(texto, idioma_origem, idioma_destino)
+
+        if status_code == 200:
+            return traducao, 200
+        else:
+            error_msg = "Não foi possível realizar a requisição :/"
+            logger.warning(
+                "Erro ao realizar a requisição",{error_msg})
+            return {"message": error_msg}, 400
+
+        
+    except Exception as e:
+        # tratando erros nao previstos
+        error_msg = "Não foi possível realizar a requisição :/"
+        logger.warning(
+                    "Erro ao realizar a requisição",{e})
+        return {"message": error_msg}, 400
+
+
+def realizar_traducao(texto:str,idioma_origem:str, idioma_destino:str): 
+    try:          
+        if not texto:
+            error_msg = "Texto a ser traduzido não enviado"
+            logger.warning(
+            "Erro ao traduzir texto", error_msg)
+            return {"message": error_msg}, 404
+        
+        url = "https://translation.googleapis.com/language/translate/v2?key="+GOOGLE_TRANSLATE_API_KEY
+
+        params = {
+            "q": texto,
+            "source": idioma_origem,
+            "target": idioma_destino,
+            "format": "text"
+        }
+
+        
+        logger.debug("Requisitando tradução")
+
+        resposta = requests.post(url, data=params)
+
+        status_code = resposta.status_code
+
+        if(status_code == 200):
+            dados = resposta.json()
+
+            resultado = dados.get("data")
+            traduzido = resultado.get("translations")[0].get("translatedText")
+
+            return traduzido,200
+        else :
+            return "", 400
+
+        
+    except Exception as e:
+        # tratando erros nao previstos
+        error_msg = "Não foi possível realizar a requisição :/"
+        logger.warning(
+                    "Erro ao realizar a requisição",{e})
+        return {"message": error_msg}, 400
