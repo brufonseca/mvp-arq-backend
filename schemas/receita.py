@@ -5,14 +5,15 @@ class ReceitaBuscaSchema(BaseModel):
    """
     Define como representar uma busca. A busca sera feita pela lista de ingredientes
     """
-   ingredients: str = "egg, banana"
-   excludeIngredients: str = "salt, suggar"
+   ingredients: str = "ovo, banana"
+   excludeIngredients: str = "sal, açúcar"
 
 class ReceitaViewSchema(BaseModel):
     """ 
-    Define como um registro do diario sera retornado:  data + refeicoes
+    Define como uma receita será retornada
     """
-    receitas: List[str]
+    # receitas: List[str]
+    receita: str
 
 def retorna_lista_receitas(receitas: List[Dict[str, Any]]):
     list_receitas = []
