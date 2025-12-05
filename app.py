@@ -260,6 +260,7 @@ def buscar_receita(query: ReceitaBuscaSchema):
             ingredientes = query.ingredients
             excluir_ingredientes = query.excludeIngredients
             max_results = 1
+            tipo_prato = query.dishType
 
             ingredientes_traduzidos,ing_status_code = realizar_traducao(ingredientes, "pt-BR", "en")
             excluir_ingredientes_traduzidos,exc_ing_status_code  = realizar_traducao(excluir_ingredientes, "pt-BR", "en")
@@ -280,6 +281,7 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 "addRecipeInformation": True,  
                 "fillIngredients": True,
                 "addRecipeInstructions": True,
+                "type":tipo_prato
             }
             
             
@@ -291,7 +293,15 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 dados = resposta.json()
                 receitas = dados.get("results")
 
-                receita = retorna_lista_receitas(receitas)[0]
+                lista_receita = retorna_lista_receitas(receitas)
+
+                if not lista_receita:
+                    error_msg = "Não foi possível realizar a requisição :/"
+                    logger.warning(
+                        "Erro ao realizar a requisição",{e})
+                    return {"message": error_msg}, 400
+
+                receita = lista_receita[0]
 
                 titulo = receita.get("titulo")
                 instrucoes = receita.get("instrucoes")
@@ -300,10 +310,10 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 texto_ingredientes = ""
 
                 for ingrediente in ingredientes:
-                    texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "$$$"
+                    texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "<<|>>"
 
 
-                texto_a_traduzir = titulo + "&&&"+instrucoes+ "&&&"+texto_ingredientes
+                texto_a_traduzir = titulo + "<§§§>"+instrucoes+ "<§§§>"+texto_ingredientes
 
                 texto_traduzido, status_code = realizar_traducao(texto_a_traduzir, "en", "pt-BR")
 
