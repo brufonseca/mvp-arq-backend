@@ -1,8 +1,11 @@
+import os
 import json
+import requests
 
 from sqlite3 import IntegrityError
 from flask_openapi3 import OpenAPI, Info, Tag
 from flask import redirect, request
+
 
 from model import Session, Diario, Refeicao
 from logger import logger
@@ -13,12 +16,30 @@ from schemas.diario import (
     retorna_diario, retorna_lista_diarios
 )
 
+from schemas.receita import (ReceitaBuscaSchema, ReceitaViewSchema, retorna_lista_receitas, organiza_estrutura_receita)
+
+from schemas.traducao import (TraducaoRequisicaoSchema, TraducaoViewSchema)
+
 from schemas.error import ErrorSchema
 from flask_cors import CORS
+
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 info = Info(title="Diário Introdução Alimentar API", version="1.0.0")
 app = OpenAPI(__name__, info=info)
 CORS(app)
+
+
+#definindo api keys
+
+SPOONACULAR_API_KEY = os.getenv('SPOONACULAR_API_KEY')
+GOOGLE_TRANSLATE_API_KEY = os.getenv('GOOGLE_TRANSLATE_API_KEY')
+
+if not SPOONACULAR_API_KEY:
+    raise RuntimeError("SPOONACULAR_API_KEY não encontrada nas variáveis de ambiente")
 
 # definindo tags
 home_tag = Tag(name="Documentação",
@@ -26,6 +47,9 @@ home_tag = Tag(name="Documentação",
 diario_tag = Tag(
     name="Diário", description="Adição, visualização e remoção de registros do diário de introdução alimentar")
 
+receita_tag = Tag(name="Receitas", description="Busca de receitas usando a API Spoonacular")
+
+traducao_tag = Tag(name="Tradução", description="Tradução de textos usando a API Google Translate")
 
 @app.get('/', tags=[home_tag])
 def home():
@@ -226,4 +250,181 @@ def edit_entrada_diario(body:DiarioSchema):
         error_msg = "Não foi possível editar o registro :/"
         logger.warning(
             "Erro ao adicionar registro para a data %s, %s", diario.data_registro, {e})
+        return {"message": error_msg}, 400
+
+@app.get('/buscar_receita', tags=[receita_tag],
+ responses={"200": ReceitaViewSchema,  "400": ErrorSchema})
+def buscar_receita(query: ReceitaBuscaSchema):
+    """Busca uma receita utilizando a API Spoonacular a partir dos parametros
+    fornecidos pelo usuário
+
+
+    Retorna uma representação de receita
+
+    """
+        try:
+
+            ingredientes = query.ingredients
+            excluir_ingredientes = query.excludeIngredients
+            max_results = 1
+            tipo_prato = query.dishType
+
+            #realiza a tradução dos parametros que serão enviados para a API
+            ingredientes_traduzidos,ing_status_code = realizar_traducao(ingredientes, "pt-BR", "en")
+            excluir_ingredientes_traduzidos,exc_ing_status_code  = realizar_traducao(excluir_ingredientes, "pt-BR", "en")
+
+            if ing_status_code == 400 or exc_ing_status_code == 400 :
+                error_msg = "Não foi possível traduzir os ingredientes"
+                logger.warning(
+                "Erro ao buscar receitas", error_msg)
+                return {"message": error_msg}, 404
+            
+            
+            #prepara a url da request
+            url = "https://api.spoonacular.com/recipes/complexSearch"
+
+            params = {
+                "apiKey": SPOONACULAR_API_KEY,
+                "includeIngredients": ingredientes_traduzidos,
+                "excludeIngredients": excluir_ingredientes_traduzidos,
+                "number": max_results,
+                "addRecipeInformation": True,  
+                "fillIngredients": True,
+                "addRecipeInstructions": True,
+                "type":tipo_prato
+            }
+            
+            
+            logger.debug("Requisitando receitas")
+            resposta = requests.get(url, params=params)
+
+            if resposta.status_code == 200:
+
+                dados = resposta.json()
+                receitas = dados.get("results")
+
+                #estrutura o retorno da request 
+                lista_receita = retorna_lista_receitas(receitas)
+
+                if not lista_receita:
+                    error_msg = "Não foi possível realizar a requisição :/"
+                    logger.warning(
+                        "Erro ao realizar a requisição",{e})
+                    return {"message": error_msg}, 400
+
+                receita = lista_receita[0]
+
+                titulo = receita.get("titulo")
+                instrucoes = receita.get("instrucoes")
+                ingredientes = receita.get("ingredientes")
+
+                texto_ingredientes = ""
+
+                for ingrediente in ingredientes:
+                    texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "<<|>>"
+
+
+                texto_a_traduzir = titulo + "<§§§>"+instrucoes+ "<§§§>"+texto_ingredientes
+
+                #traduz a receita retornada
+                texto_traduzido, status_code = realizar_traducao(texto_a_traduzir, "en", "pt-BR")
+
+                if(status_code == 200):
+                    #estrutura a receita para enviar para o frontend
+                    texto_traduzido = organiza_estrutura_receita(texto_traduzido)
+
+                #retorna a receita
+                return texto_traduzido, status_code
+
+            else:
+                error_msg = "Não foi possível realizar a requisição :/"
+                logger.warning(
+                    "Erro ao realizar a requisição",{e})
+                return {"message": error_msg}, 400
+        except Exception as e:
+            # tratando erros nao previstos
+            error_msg = "Não foi possível realizar a requisição :/"
+            logger.warning(
+                        "Erro ao realizar a requisição",{e})
+            return {"message": error_msg}, 400
+
+
+@app.get('/traduzir_texto', tags=[traducao_tag],
+ responses={"200": TraducaoViewSchema,  "400": ErrorSchema})
+def traduzir_texto(query: TraducaoRequisicaoSchema):
+    """Realiza a tradução de textos através da API Google Translate
+
+    Retorna um texto traduzido.
+    """
+    try:
+
+        texto = query.texto
+        idioma_origem = query.idioma_origem
+        idioma_destino = query.idioma_destino
+
+        traducao, status_code = realizar_traducao(texto, idioma_origem, idioma_destino)
+
+        if status_code == 200:
+            #retorna texto traduzido
+            return traducao, 200
+        else:
+            error_msg = "Não foi possível realizar a requisição :/"
+            logger.warning(
+                "Erro ao realizar a requisição",{error_msg})
+            return {"message": error_msg}, 400
+
+        
+    except Exception as e:
+        # tratando erros nao previstos
+        error_msg = "Não foi possível realizar a requisição :/"
+        logger.warning(
+                    "Erro ao realizar a requisição",{e})
+        return {"message": error_msg}, 400
+
+
+def realizar_traducao(texto:str,idioma_origem:str, idioma_destino:str): 
+    """Prepara  a request de tradução de textos através da API Google Translate
+
+    Retorna o texto traduzido e o status code da request.
+    """
+    try:          
+        if not texto:
+            error_msg = "Texto a ser traduzido não enviado"
+            logger.warning(
+            "Erro ao traduzir texto", error_msg)
+            return {"message": error_msg}, 404
+        
+        #prepara a url da request
+        url = "https://translation.googleapis.com/language/translate/v2?key="+GOOGLE_TRANSLATE_API_KEY
+
+        params = {
+            "q": texto,
+            "source": idioma_origem,
+            "target": idioma_destino,
+            "format": "text"
+        }
+
+        
+        logger.debug("Requisitando tradução")
+
+        resposta = requests.post(url, data=params)
+
+        status_code = resposta.status_code
+
+        if(status_code == 200):
+            dados = resposta.json()
+
+            resultado = dados.get("data")
+            traduzido = resultado.get("translations")[0].get("translatedText")
+
+            return traduzido,200
+        else :
+            return "", 400
+
+        
+    except Exception as e:
+        # tratando erros nao previstos
+        error_msg = "Não foi possível realizar a requisição :/"
+        logger.warning(
+                    "Erro ao realizar a requisição",{e})
         return {"message": error_msg}, 400
