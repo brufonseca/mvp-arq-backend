@@ -52,6 +52,10 @@ def retorna_lista_receitas(receitas: List[Dict[str, Any]]):
 
 def organiza_estrutura_receita(texto_receita:str):
 
+    """ 
+    Estrutura uma receita
+    """
+
     titulo, instrucoes, texto_ingredientes = texto_receita.split("<§§§>")
     ingredientes = texto_ingredientes.split("<<|>>")
 

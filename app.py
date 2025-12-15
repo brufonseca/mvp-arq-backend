@@ -255,6 +255,13 @@ def edit_entrada_diario(body:DiarioSchema):
 @app.get('/buscar_receita', tags=[receita_tag],
  responses={"200": ReceitaViewSchema,  "400": ErrorSchema})
 def buscar_receita(query: ReceitaBuscaSchema):
+    """Busca uma receita utilizando a API Spoonacular a partir dos parametros
+    fornecidos pelo usuário
+
+
+    Retorna uma representação de receita
+
+    """
         try:
 
             ingredientes = query.ingredients
@@ -262,6 +269,7 @@ def buscar_receita(query: ReceitaBuscaSchema):
             max_results = 1
             tipo_prato = query.dishType
 
+            #realiza a tradução dos parametros que serão enviados para a API
             ingredientes_traduzidos,ing_status_code = realizar_traducao(ingredientes, "pt-BR", "en")
             excluir_ingredientes_traduzidos,exc_ing_status_code  = realizar_traducao(excluir_ingredientes, "pt-BR", "en")
 
@@ -271,6 +279,8 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 "Erro ao buscar receitas", error_msg)
                 return {"message": error_msg}, 404
             
+            
+            #prepara a url da request
             url = "https://api.spoonacular.com/recipes/complexSearch"
 
             params = {
@@ -293,6 +303,7 @@ def buscar_receita(query: ReceitaBuscaSchema):
                 dados = resposta.json()
                 receitas = dados.get("results")
 
+                #estrutura o retorno da request 
                 lista_receita = retorna_lista_receitas(receitas)
 
                 if not lista_receita:
@@ -315,14 +326,16 @@ def buscar_receita(query: ReceitaBuscaSchema):
 
                 texto_a_traduzir = titulo + "<§§§>"+instrucoes+ "<§§§>"+texto_ingredientes
 
+                #traduz a receita retornada
                 texto_traduzido, status_code = realizar_traducao(texto_a_traduzir, "en", "pt-BR")
 
                 if(status_code == 200):
+                    #estrutura a receita para enviar para o frontend
                     texto_traduzido = organiza_estrutura_receita(texto_traduzido)
 
+                #retorna a receita
                 return texto_traduzido, status_code
 
-                # //return retorna_lista_receitas(receitas), 200
             else:
                 error_msg = "Não foi possível realizar a requisição :/"
                 logger.warning(
@@ -339,6 +352,10 @@ def buscar_receita(query: ReceitaBuscaSchema):
 @app.get('/traduzir_texto', tags=[traducao_tag],
  responses={"200": TraducaoViewSchema,  "400": ErrorSchema})
 def traduzir_texto(query: TraducaoRequisicaoSchema):
+    """Realiza a tradução de textos através da API Google Translate
+
+    Retorna um texto traduzido.
+    """
     try:
 
         texto = query.texto
@@ -348,6 +365,7 @@ def traduzir_texto(query: TraducaoRequisicaoSchema):
         traducao, status_code = realizar_traducao(texto, idioma_origem, idioma_destino)
 
         if status_code == 200:
+            #retorna texto traduzido
             return traducao, 200
         else:
             error_msg = "Não foi possível realizar a requisição :/"
@@ -365,6 +383,10 @@ def traduzir_texto(query: TraducaoRequisicaoSchema):
 
 
 def realizar_traducao(texto:str,idioma_origem:str, idioma_destino:str): 
+    """Prepara  a request de tradução de textos através da API Google Translate
+
+    Retorna o texto traduzido e o status code da request.
+    """
     try:          
         if not texto:
             error_msg = "Texto a ser traduzido não enviado"
@@ -372,6 +394,7 @@ def realizar_traducao(texto:str,idioma_origem:str, idioma_destino:str):
             "Erro ao traduzir texto", error_msg)
             return {"message": error_msg}, 404
         
+        #prepara a url da request
         url = "https://translation.googleapis.com/language/translate/v2?key="+GOOGLE_TRANSLATE_API_KEY
 
         params = {
