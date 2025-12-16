@@ -192,7 +192,7 @@ def del_produto(query: DiarioBuscaSchema):
     return {"message": error_msg}, 404
 
 
-@app.post('/editar_diario', tags=[diario_tag],
+@app.put('/editar_diario', tags=[diario_tag],
           responses={"200": DiarioViewSchema, "409": ErrorSchema, "400": ErrorSchema})
 def edit_entrada_diario(body:DiarioSchema):
     """Edita um registro do diario de introducao alimentar
@@ -262,91 +262,91 @@ def buscar_receita(query: ReceitaBuscaSchema):
     Retorna uma representação de receita
 
     """
-        try:
+    try:
 
-            ingredientes = query.ingredients
-            excluir_ingredientes = query.excludeIngredients
-            max_results = 1
-            tipo_prato = query.dishType
+        ingredientes = query.ingredients
+        excluir_ingredientes = query.excludeIngredients
+        max_results = 1
+        tipo_prato = query.dishType
 
-            #realiza a tradução dos parametros que serão enviados para a API
-            ingredientes_traduzidos,ing_status_code = realizar_traducao(ingredientes, "pt-BR", "en")
-            excluir_ingredientes_traduzidos,exc_ing_status_code  = realizar_traducao(excluir_ingredientes, "pt-BR", "en")
+        #realiza a tradução dos parametros que serão enviados para a API
+        ingredientes_traduzidos,ing_status_code = realizar_traducao(ingredientes, "pt-BR", "en")
+        excluir_ingredientes_traduzidos,exc_ing_status_code  = realizar_traducao(excluir_ingredientes, "pt-BR", "en")
 
-            if ing_status_code == 400 or exc_ing_status_code == 400 :
-                error_msg = "Não foi possível traduzir os ingredientes"
-                logger.warning(
-                "Erro ao buscar receitas", error_msg)
-                return {"message": error_msg}, 404
-            
-            
-            #prepara a url da request
-            url = "https://api.spoonacular.com/recipes/complexSearch"
+        if ing_status_code == 400 or exc_ing_status_code == 400 :
+            error_msg = "Não foi possível traduzir os ingredientes"
+            logger.warning(
+            "Erro ao buscar receitas", error_msg)
+            return {"message": error_msg}, 404
+        
+        
+        #prepara a url da request
+        url = "https://api.spoonacular.com/recipes/complexSearch"
 
-            params = {
-                "apiKey": SPOONACULAR_API_KEY,
-                "includeIngredients": ingredientes_traduzidos,
-                "excludeIngredients": excluir_ingredientes_traduzidos,
-                "number": max_results,
-                "addRecipeInformation": True,  
-                "fillIngredients": True,
-                "addRecipeInstructions": True,
-                "type":tipo_prato
-            }
-            
-            
-            logger.debug("Requisitando receitas")
-            resposta = requests.get(url, params=params)
+        params = {
+            "apiKey": SPOONACULAR_API_KEY,
+            "includeIngredients": ingredientes_traduzidos,
+            "excludeIngredients": excluir_ingredientes_traduzidos,
+            "number": max_results,
+            "addRecipeInformation": True,  
+            "fillIngredients": True,
+            "addRecipeInstructions": True,
+            "type":tipo_prato
+        }
+        
+        
+        logger.debug("Requisitando receitas")
+        resposta = requests.get(url, params=params)
 
-            if resposta.status_code == 200:
+        if resposta.status_code == 200:
 
-                dados = resposta.json()
-                receitas = dados.get("results")
+            dados = resposta.json()
+            receitas = dados.get("results")
 
-                #estrutura o retorno da request 
-                lista_receita = retorna_lista_receitas(receitas)
+            #estrutura o retorno da request 
+            lista_receita = retorna_lista_receitas(receitas)
 
-                if not lista_receita:
-                    error_msg = "Não foi possível realizar a requisição :/"
-                    logger.warning(
-                        "Erro ao realizar a requisição",{e})
-                    return {"message": error_msg}, 400
-
-                receita = lista_receita[0]
-
-                titulo = receita.get("titulo")
-                instrucoes = receita.get("instrucoes")
-                ingredientes = receita.get("ingredientes")
-
-                texto_ingredientes = ""
-
-                for ingrediente in ingredientes:
-                    texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "<<|>>"
-
-
-                texto_a_traduzir = titulo + "<§§§>"+instrucoes+ "<§§§>"+texto_ingredientes
-
-                #traduz a receita retornada
-                texto_traduzido, status_code = realizar_traducao(texto_a_traduzir, "en", "pt-BR")
-
-                if(status_code == 200):
-                    #estrutura a receita para enviar para o frontend
-                    texto_traduzido = organiza_estrutura_receita(texto_traduzido)
-
-                #retorna a receita
-                return texto_traduzido, status_code
-
-            else:
+            if not lista_receita:
                 error_msg = "Não foi possível realizar a requisição :/"
                 logger.warning(
                     "Erro ao realizar a requisição",{e})
                 return {"message": error_msg}, 400
-        except Exception as e:
-            # tratando erros nao previstos
+
+            receita = lista_receita[0]
+
+            titulo = receita.get("titulo")
+            instrucoes = receita.get("instrucoes")
+            ingredientes = receita.get("ingredientes")
+
+            texto_ingredientes = ""
+
+            for ingrediente in ingredientes:
+                texto_ingredientes =  texto_ingredientes + str(ingrediente.get("quantidade"))+" "+ ingrediente.get("unidade") + ingrediente.get("nome") + "<<|>>"
+
+
+            texto_a_traduzir = titulo + "<§§§>"+instrucoes+ "<§§§>"+texto_ingredientes
+
+            #traduz a receita retornada
+            texto_traduzido, status_code = realizar_traducao(texto_a_traduzir, "en", "pt-BR")
+
+            if(status_code == 200):
+                #estrutura a receita para enviar para o frontend
+                texto_traduzido = organiza_estrutura_receita(texto_traduzido)
+
+            #retorna a receita
+            return texto_traduzido, status_code
+
+        else:
             error_msg = "Não foi possível realizar a requisição :/"
             logger.warning(
-                        "Erro ao realizar a requisição",{e})
+                "Erro ao realizar a requisição",{e})
             return {"message": error_msg}, 400
+    except Exception as e:
+        # tratando erros nao previstos
+        error_msg = "Não foi possível realizar a requisição :/"
+        logger.warning(
+                    "Erro ao realizar a requisição",{e})
+        return {"message": error_msg}, 400
 
 
 @app.get('/traduzir_texto', tags=[traducao_tag],
