@@ -97,21 +97,24 @@ Na raiz do repositório:
 
 **Criar e ativar um ambiente virtual**:
 
-    ````bash
+   ```bash
     python -m venv env
     source env/bin/activate  #  Linux ou Mac
     venv\Scripts\activate     #  Windows
+   ```
 
 
 **Instalar as dependências**:
 
-    ````bash
+   ```bash
     pip install -r requirements.txt
+   ```
 
 **Executar a aplicação**:
 
-    ````bash
+   ```bash
     flask run --host 0.0.0.0 --port 5000
+   ```
 
 
 Acesse no navegador:
@@ -125,6 +128,7 @@ Acesse no navegador:
 **Os comandos a seguir devem ser executados na raiz do repositório e com privilégios de administrador ou usuário pertencente ao grupo docker**
 
 Construção da imagem Docker
+
    ```bash
    docker build -t mvp-arq-backend .  
    ```
@@ -147,4 +151,77 @@ Repositório do Frontend:
 👉 https://github.com/brufonseca/mvp-arq-frontend
 
 
+---
+## 🌐 APIs Externas
 
+### 🥄 Spoonacular – Busca de Receitas
+
+Este projeto utiliza a API Spoonacular para realizar buscas de receitas de acordo com os critérios informados pelo usuário no frontend.
+
+#### 🔗 Endpoint Utilizado
+
+```nginx
+GET https://api.spoonacular.com/recipes/complexSearch
+```
+
+#### 📥 Parâmetros Utilizados
+
+Os seguintes parâmetros são enviados pelo frontend, conforme preenchidos pelo usuário:
+
+| Parâmetro            | Tipo   | Descrição                                               |
+| -------------------- | ------ | ------------------------------------------------------- |
+| `includeIngredients` | string | Ingredientes que **devem** estar presentes na receita.  |
+| `excludeIngredients` | string | Ingredientes que **não devem** aparecer na receita.     |
+| `type`               | string | Tipo da refeição (ex: "breakfast", "snack", "dessert"). |
+
+#### 📄 Licença / Uso
+
+API proprietária da Spoonacular
+
+Possui plano gratuito com limites de requisições
+
+Uso sujeito aos Termos de Serviço da Spoonacular
+👉 https://spoonacular.com/food-api/terms
+
+
+#### 📚 Documentação Oficial
+
+👉 https://spoonacular.com/food-api/docs#Search-Recipes-Complex
+
+
+### 🌍 Google Cloud Translation API
+
+A Google Cloud Translation API é utilizada para traduzir textos dinamicamente, permitindo a exibição de conteúdos em diferentes idiomas.
+
+Será utilizada para traduzir os parâmetros que serão passados para a API Spoonacular, assim como o retorno dela.
+
+#### 🔗 Endpoint Utilizado
+
+```nginx
+POST https://translation.googleapis.com/language/translate/v2
+```
+
+#### 📥 Parâmetros Utilizados
+
+| Parâmetro | Tipo   | Descrição                    |
+| --------- | ------ | ---------------------------- |
+| `q`       | string | Texto a ser traduzido        |
+| `source`  | string | Idioma de origem (ex: `en`)  |
+| `target`  | string | Idioma de destino (ex: `pt`) |
+| `format`  | string | Formato do texto (`text`)    |
+
+
+#### 📚 Documentação Oficial
+
+👉 https://cloud.google.com/translate/docs
+
+#### 📄 Licença / Uso
+
+API proprietária do Google Cloud
+
+Serviço pago, com cota gratuita limitada
+
+Cobrança baseada no volume de caracteres traduzidos
+
+Uso sujeito aos Termos de Serviço do Google Cloud
+👉 https://cloud.google.com/terms
