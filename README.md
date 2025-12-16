@@ -4,11 +4,13 @@ Bem-vinda(o) ao repositório do **MVP Arquitetura de Software – Backend**!
 
 Essa API tem como objetivo fornecer endpoints para registro e gerenciamento de um **diário de introdução alimentar**, permitindo armazenar, consultar e organizar entradas relacionadas à alimentação do bebê e também realizar a busca de receitas.
 
-Ele se comunica com o frontend Lit através de REST, com toda a aplicação rodando em containers independentes via Docker.
+Ele se comunica com o frontend através de REST, com toda a aplicação rodando em containers independentes via Docker.
 
-> **Cenário implementado: Cenário 1.1**
+
 ---
 ## 📊 Fluxograma
+
+> **Cenário implementado: Cenário 1.1**
 
 <img width="800" height="382" alt="image" src="https://github.com/user-attachments/assets/e20f2030-9094-47c0-9a11-b66c44dee8ad" />
 
@@ -84,7 +86,7 @@ Exibir dados retornados pela API
 
 Este projeto utiliza variáveis de ambiente para configurar chaves de API
 
-1. Faça uma cópia do arquivo .env.template:
+1. Faça uma cópia do arquivo .env.template renomeando para .env:
   ```bash
   cp .env.template .env
   ```
