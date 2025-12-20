@@ -90,7 +90,7 @@ Este projeto utiliza variáveis de ambiente para configurar chaves de API
   ```bash
   cp .env.template .env
   ```
-2. Abra o arquivo .env e informe as chaves de API (SPOONACULAR_API_KEY, GOOGLE_TRANSLATE_API_KEY)
+2. Edite o arquivo .env e informe as chaves de API (SPOONACULAR_API_KEY, GOOGLE_TRANSLATE_API_KEY)
 
 
 ### 💻 Execução em Modo de Desenvolvimento
