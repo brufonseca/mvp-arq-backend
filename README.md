@@ -82,7 +82,7 @@ Na raiz do repositório:
    ```bash
     python -m venv env
     source env/bin/activate  #  Linux ou Mac
-    venv\Scripts\activate     #  Windows
+    env\Scripts\activate     #  Windows
    ```
 
 
@@ -126,7 +126,7 @@ Acesse no navegador:
 
 ### 🐳 Docker Compose (Frontend + Backend)
 
-Um arquivo **docker-compose.yml** está disponível na raiz do repositório do frontend, responsável por subir **tanto o frontend quanto o backend** juntos.  
+Um arquivo **docker-compose.yaml** está disponível na raiz do repositório do frontend, responsável por subir **tanto o frontend quanto o backend** juntos.  
 Isso facilita o desenvolvimento e garante que os dois serviços conversem corretamente dentro da mesma rede Docker.
 
 Repositório do Frontend:
