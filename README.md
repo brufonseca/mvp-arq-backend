@@ -52,26 +52,6 @@ Antes de rodar o projeto, certifique-se de ter instalado:
 
 A comunicação entre o frontend e este backend é feita através de uma API REST, utilizando requisições HTTP e respostas em formato JSON.
 
-## 📡 Padrões adotados
-
-Base URL: http://localhost:5000
-
-Formato de dados: JSON
-
-Métodos HTTP: GET, POST, PUT, DELETE
-
-Status Codes seguindo o padrão REST 
-
-## 🧩 Integração com o Frontend
-
-O frontend é responsável por:
-
-Consumir os endpoints da API
-
-Enviar dados de formulários
-
-Exibir dados retornados pela API
-
 ---
 
 ## ▶️ Como Rodar o Projeto 
